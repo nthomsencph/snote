@@ -4,18 +4,18 @@ services:
     image: postgres:16
     container_name: snote-db
     environment:
-      POSTGRES_USER: snote
-      POSTGRES_PASSWORD: snote_password
-      POSTGRES_DB: snote
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U snote"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  postgres_data: 
+  postgres_data:

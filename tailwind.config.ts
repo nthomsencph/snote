@@ -1,4 +1,6 @@
 import type { Config } from 'tailwindcss';
+import typography from '@tailwindcss/typography';
+import animate from 'tailwindcss-animate';
 
 const config: Config = {
   content: [
@@ -7,8 +9,14 @@ const config: Config = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   darkMode: 'class',
+  safelist: ['font-inter', 'font-georgia', 'font-merriweather', 'font-mono'],
   theme: {
     extend: {
+      fontFamily: {
+        inter: ['Inter', 'sans-serif'],
+        georgia: ['Georgia', 'serif'],
+        merriweather: ['Merriweather', 'serif'],
+      },
       typography: {
         DEFAULT: {
           css: {
@@ -18,9 +26,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/typography'),
-  ],
+  plugins: [typography, animate],
 };
 
-export default config; 
+export default config;
