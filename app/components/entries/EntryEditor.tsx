@@ -306,7 +306,7 @@ declare global {
 
 export default function Editor({ value, onChange }: EditorProps) {
   const [showFormattingMenu, setShowFormattingMenu] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [menuTop, setMenuTop] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [editorHeight, setEditorHeight] = useState<number>(320);
@@ -314,7 +314,7 @@ export default function Editor({ value, onChange }: EditorProps) {
   const updateEditorHeight = useCallback((editor: TiptapEditor) => {
     if (!editor || !editor.view) return;
     const editorElement = editor.view.dom as HTMLElement;
-    const newHeight = Math.max(320, editorElement.scrollHeight + 192); // 192px for padding
+    const newHeight = Math.max(320, editorElement.scrollHeight + 192);
     setEditorHeight(newHeight);
     document.documentElement.style.setProperty('--editor-height', `${newHeight}px`);
   }, []);
@@ -325,11 +325,20 @@ export default function Editor({ value, onChange }: EditorProps) {
     const selection = editor.view.state.selection;
     const { from } = selection;
     const start = editor.view.coordsAtPos(from);
+    const editorElement = editor.view.dom as HTMLElement;
+    const editorRect = editorElement.getBoundingClientRect();
+    const menuElement = menuRef.current;
 
-    setMenuPosition({
-      top: start.top,
-      left: start.left,
-    });
+    if (menuElement) {
+      const menuHeight = menuElement.offsetHeight;
+      const lineHeight = 24; // Standard line height
+      const idealPosition = start.top - editorRect.top - menuHeight - lineHeight;
+
+      // Ensure the menu doesn't go above the container
+      const topPosition = Math.max(0, idealPosition);
+
+      setMenuTop(topPosition);
+    }
   }, []);
 
   const editor = useEditor({
@@ -351,6 +360,9 @@ export default function Editor({ value, onChange }: EditorProps) {
       updateMenuPosition(editor);
       updateEditorHeight(editor);
     },
+    onSelectionUpdate: ({ editor }) => {
+      updateMenuPosition(editor);
+    },
   });
 
   useEffect(() => {
@@ -366,9 +378,26 @@ export default function Editor({ value, onChange }: EditorProps) {
     }
   }, [editor, value]);
 
-  const handleFormatClick = (e: React.MouseEvent) => {
+  // Handle clicks outside the editor and menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        !editorContainerRef.current?.contains(event.target as Node) &&
+        !menuRef.current?.contains(event.target as Node)
+      ) {
+        setShowFormattingMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleFormatButtonClick = (e: React.MouseEvent, command: () => void) => {
+    e.preventDefault();
     e.stopPropagation();
-    setShowFormattingMenu(!showFormattingMenu);
+    command();
+    editor?.commands.focus();
   };
 
   return (
@@ -376,7 +405,6 @@ export default function Editor({ value, onChange }: EditorProps) {
       className="relative"
       ref={editorContainerRef}
       onClick={() => setShowFormattingMenu(true)}
-      onBlur={() => setShowFormattingMenu(false)}
       style={{ height: `${editorHeight}px` }}
     >
       <EditorContent editor={editor} className="max-w-none" />
@@ -384,42 +412,53 @@ export default function Editor({ value, onChange }: EditorProps) {
       <div
         ref={menuRef}
         className={`formatting-menu ${showFormattingMenu ? 'visible' : ''}`}
-        onClick={handleFormatClick}
-        style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+        style={{ top: `${menuTop}px` }}
       >
         <button
-          onClick={() => editor?.chain().focus().toggleBold().run()}
-          className={`format-button ${editor?.isActive('bold') ? 'active' : ''}`}
+          onClick={e =>
+            handleFormatButtonClick(e, () => editor?.chain().focus().toggleBold().run())
+          }
+          className={`formatting-button ${editor?.isActive('bold') ? 'is-active' : ''}`}
         >
           <Bold size={16} />
         </button>
         <button
-          onClick={() => editor?.chain().focus().toggleItalic().run()}
-          className={`format-button ${editor?.isActive('italic') ? 'active' : ''}`}
+          onClick={e =>
+            handleFormatButtonClick(e, () => editor?.chain().focus().toggleItalic().run())
+          }
+          className={`formatting-button ${editor?.isActive('italic') ? 'is-active' : ''}`}
         >
           <Italic size={16} />
         </button>
         <button
-          onClick={() => editor?.chain().focus().toggleUnderline().run()}
-          className={`format-button ${editor?.isActive('underline') ? 'active' : ''}`}
+          onClick={e =>
+            handleFormatButtonClick(e, () => editor?.chain().focus().toggleUnderline().run())
+          }
+          className={`formatting-button ${editor?.isActive('underline') ? 'is-active' : ''}`}
         >
           <UnderlineIcon size={16} />
         </button>
         <button
-          onClick={() => editor?.chain().focus().setTextAlign('left').run()}
-          className={`format-button ${editor?.isActive({ textAlign: 'left' }) ? 'active' : ''}`}
+          onClick={e =>
+            handleFormatButtonClick(e, () => editor?.chain().focus().setTextAlign('left').run())
+          }
+          className={`formatting-button ${editor?.isActive({ textAlign: 'left' }) ? 'is-active' : ''}`}
         >
           <AlignLeft size={16} />
         </button>
         <button
-          onClick={() => editor?.chain().focus().setTextAlign('center').run()}
-          className={`format-button ${editor?.isActive({ textAlign: 'center' }) ? 'active' : ''}`}
+          onClick={e =>
+            handleFormatButtonClick(e, () => editor?.chain().focus().setTextAlign('center').run())
+          }
+          className={`formatting-button ${editor?.isActive({ textAlign: 'center' }) ? 'is-active' : ''}`}
         >
           <AlignCenter size={16} />
         </button>
         <button
-          onClick={() => editor?.chain().focus().setTextAlign('right').run()}
-          className={`format-button ${editor?.isActive({ textAlign: 'right' }) ? 'active' : ''}`}
+          onClick={e =>
+            handleFormatButtonClick(e, () => editor?.chain().focus().setTextAlign('right').run())
+          }
+          className={`formatting-button ${editor?.isActive({ textAlign: 'right' }) ? 'is-active' : ''}`}
         >
           <AlignRight size={16} />
         </button>

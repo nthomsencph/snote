@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { EntryCard } from './components/entries/EntryCard';
 import { SearchComponent } from './components/ui/SearchComponent';
@@ -15,6 +15,7 @@ import { useUIStore } from './lib/store/uiStore';
 type SortOption = 'date' | 'title' | 'index';
 
 export default function Home() {
+  const router = useRouter();
   const utils = trpc.useUtils();
   const { data: entries = [], isLoading } = trpc.entries.getAll.useQuery();
   const deleteEntry = trpc.entries.delete.useMutation({
@@ -41,6 +42,10 @@ export default function Home() {
         toast.error('Failed to delete entry');
       }
     }
+  };
+
+  const handleCreateEntry = () => {
+    router.push('/new-entry');
   };
 
   const filteredEntries = entries
@@ -89,8 +94,8 @@ export default function Home() {
             onFontChange={setFont}
           />
           <div className="w-1" />
-          <Link
-            href="/new-entry"
+          <button
+            onClick={handleCreateEntry}
             className="bg-[#7A908E] hover:bg-[#687F7D] text-white p-1.5 rounded-lg transition-colors"
             title="New Entry"
           >
@@ -104,7 +109,7 @@ export default function Home() {
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-          </Link>
+          </button>
         </div>
       </div>
 

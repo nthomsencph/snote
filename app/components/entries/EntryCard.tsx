@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
-import Link from 'next/link';
-import { Entry } from '../../lib/types';
 import { useRouter } from 'next/navigation';
+import { Entry } from '../../lib/types';
+import { trpc } from '../../lib/trpc/client';
 import toast from 'react-hot-toast';
-import { useStore } from '../../lib/store/useStore';
 import { icons } from '../../lib/constants/icons';
 
 interface EntryCardProps {
@@ -22,7 +21,14 @@ export function EntryCard({ entry, onDelete, index, viewMode, hidePreview, font 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { createEntry } = useStore();
+  const utils = trpc.useUtils();
+
+  const createEntryMutation = trpc.entries.create.useMutation({
+    onSuccess: newEntry => {
+      utils.entries.getAll.invalidate();
+      router.push(`/entry/${newEntry.id}`);
+    },
+  });
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -35,14 +41,14 @@ export function EntryCard({ entry, onDelete, index, viewMode, hidePreview, font 
     e.preventDefault();
     e.stopPropagation();
     try {
-      const newEntry = await createEntry({
+      await createEntryMutation.mutateAsync({
         title: `${entry.title} (Copy)`,
         content: entry.content,
         preview: entry.preview,
+        icon: entry.icon || undefined,
       });
 
       toast.success('Entry copied successfully');
-      router.push(`/entry/${newEntry.id}`);
     } catch (err) {
       console.error('Error copying entry:', err);
       toast.error('Failed to copy entry');
@@ -68,10 +74,16 @@ export function EntryCard({ entry, onDelete, index, viewMode, hidePreview, font 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!menuRef.current?.contains(e.target as Node)) {
+      router.push(`/entry/${entry.id}`);
+    }
+  };
+
   return (
-    <Link
-      href={`/entry/${entry.id}`}
-      className={`block bg-white/90 dark:bg-gray-800/90 p-6 rounded-xl shadow-lg backdrop-blur-sm hover:bg-gray-100/90 hover:dark:bg-gray-700/90 transition-all ${hidePreview ? 'h-[100px]' : 'h-[160px]'} ${viewMode === 'list' ? 'w-full' : ''}`}
+    <div
+      onClick={handleCardClick}
+      className={`block bg-white/90 dark:bg-gray-800/90 p-6 rounded-xl shadow-lg backdrop-blur-sm hover:bg-gray-100/90 hover:dark:bg-gray-700/90 transition-all cursor-pointer ${hidePreview ? 'h-[100px]' : 'h-[160px]'} ${viewMode === 'list' ? 'w-full' : ''}`}
     >
       <div className="flex justify-between items-start h-full">
         <div className={`flex-1 min-w-0 flex flex-col h-full ${font === 'system' ? '' : font}`}>
@@ -164,6 +176,6 @@ export function EntryCard({ entry, onDelete, index, viewMode, hidePreview, font 
           )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
